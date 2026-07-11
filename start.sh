@@ -4,7 +4,7 @@ set -e
 # Start Fastify API server in background
 echo "Starting API server..."
 cd /app/api
-node server.js &
+node dist/server.js &
 API_PID=$!
 cd /app
 

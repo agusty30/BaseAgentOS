@@ -20,32 +20,8 @@ COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
 RUN pnpm turbo build --filter=@baseagent/web --filter=@baseagent/api
 
-# Flatten API deps for ESM resolution (pnpm symlinks don't survive COPY)
-RUN mkdir -p /api-flat && \
-    cp apps/api/dist/server.js /api-flat/server.js && \
-    cp apps/api/dist/server.d.ts /api-flat/ 2>/dev/null || true && \
-    cp apps/api/package.json /api-flat/package.json && \
-    cd /api-flat && \
-    npm init -y > /dev/null 2>&1 || true
-# Copy real (not symlinked) node_modules for the API
-RUN cp -rL apps/api/node_modules /api-flat/node_modules 2>/dev/null || true && \
-    cp -rL node_modules/.pnpm /api-flat/node_modules/.pnpm 2>/dev/null || true
-# Ensure top-level deps are available (pnpm hoists some to root)
-RUN for pkg in fastify @fastify/cors @fastify/helmet @fastify/jwt @fastify/cookie @fastify/rate-limit @fastify/websocket dotenv drizzle-orm pg argon2 zod uuid ethers bullmq ioredis; do \
-      if [ ! -d "/api-flat/node_modules/$pkg" ] && [ -d "/app/node_modules/.pnpm" ]; then \
-        real=$(find /app/node_modules/.pnpm -maxdepth 3 -name "package.json" -path "*/$pkg/package.json" | head -1); \
-        if [ -n "$real" ]; then \
-          pkgdir=$(dirname "$real"); \
-          mkdir -p "/api-flat/node_modules/$pkg"; \
-          cp -r "$pkgdir"/* "/api-flat/node_modules/$pkg/"; \
-        fi; \
-      fi; \
-    done
-# Also copy @baseagent/shared
-RUN mkdir -p /api-flat/node_modules/@baseagent && \
-    cp -r /app/packages/shared /api-flat/node_modules/@baseagent/shared
-
 FROM node:20-alpine AS runner
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -57,8 +33,12 @@ COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 
-# API server with flattened node_modules
-COPY --from=builder /api-flat ./api
+# API server: bundled dist only needs argon2 native module
+COPY --from=builder /app/apps/api/dist ./api/dist
+WORKDIR /app/api
+RUN npm init -y > /dev/null 2>&1 && npm install argon2 --save > /dev/null 2>&1
+WORKDIR /app
+RUN apk del python3 make g++ 2>/dev/null || true
 
 COPY start.sh ./start.sh
 RUN chmod +x ./start.sh
