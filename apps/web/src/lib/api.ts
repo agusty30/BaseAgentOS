@@ -104,6 +104,20 @@ class ApiClient {
   // Notifications
   getNotifications(limit = 50) { return this.request<any[]>('GET', `/api/notifications?limit=${limit}`); }
   markNotificationRead(id: string) { return this.request('PATCH', `/api/notifications/${id}/read`); }
+
+  // AI Providers
+  getAIProviders() { return this.request<{ providers: any[] }>('GET', '/api/settings/ai-providers'); }
+  addAIProvider(data: { name: string; slug: string; baseUrl: string; apiKey: string; defaultModel: string; isDefault?: boolean }) {
+    return this.request<{ provider: any }>('POST', '/api/settings/ai-providers', data);
+  }
+  updateAIProvider(slug: string, data: Record<string, unknown>) {
+    return this.request<{ provider: any }>('PATCH', `/api/settings/ai-providers/${slug}`, data);
+  }
+  deleteAIProvider(slug: string) { return this.request('DELETE', `/api/settings/ai-providers/${slug}`); }
+  testAIProvider(slug: string) {
+    return this.request<{ success: boolean; latencyMs: number; error?: string }>('POST', `/api/settings/ai-providers/${slug}/test`);
+  }
+  setDefaultAIProvider(slug: string) { return this.request('POST', `/api/settings/ai-providers/${slug}/set-default`); }
 }
 
 export const api = new ApiClient();

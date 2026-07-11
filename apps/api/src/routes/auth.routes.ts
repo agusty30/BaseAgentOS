@@ -42,8 +42,8 @@ export async function authRoutes(app: FastifyInstance) {
     reply.setCookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/auth/refresh',
+      sameSite: 'lax',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60,
     });
 
@@ -70,8 +70,8 @@ export async function authRoutes(app: FastifyInstance) {
     reply.setCookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/auth/refresh',
+      sameSite: 'lax',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60,
     });
 
@@ -108,7 +108,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post('/logout', async (_request, reply) => {
-    reply.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+    reply.clearCookie('refresh_token', { path: '/' });
     return { message: 'Logged out' };
   });
 }

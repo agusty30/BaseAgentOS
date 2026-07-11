@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { WalletProvider } from '@/components/providers/WalletProvider';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -10,10 +11,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-        <ClientLayout>{children}</ClientLayout>
+        <WalletProvider>
+          {children}
+        </WalletProvider>
       </body>
     </html>
   );
 }
-
-import { ClientLayout } from './client-layout';

@@ -16,6 +16,7 @@ import { missionRoutes } from './routes/mission.routes.js';
 import { portfolioRoutes } from './routes/portfolio.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
+import { settingsRoutes } from './routes/settings.routes.js';
 
 const app = Fastify({
   logger: {
@@ -67,6 +68,7 @@ async function bootstrap() {
   await app.register(portfolioRoutes, { prefix: '/api/portfolio' });
   await app.register(dashboardRoutes, { prefix: '/api/dashboard' });
   await app.register(notificationRoutes, { prefix: '/api/notifications' });
+  await app.register(settingsRoutes, { prefix: '/api/settings' });
 
   const port = parseInt(process.env.API_PORT || '3001', 10);
   const host = process.env.API_HOST || '0.0.0.0';

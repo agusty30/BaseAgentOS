@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+*.md
+apps/agents
+apps/api/src/**/*.test.ts
+apps/agents/tests
+.env*
+docker-compose.yml

@@ -3,10 +3,11 @@
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { CommandPalette } from '@/components/CommandPalette';
+import { AuthProvider } from '@/components/providers/AuthProvider';
 import { useAppStore } from '@/stores/app.store';
 import { useEffect } from 'react';
 
-export function ClientLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { sidebarOpen } = useAppStore();
 
   useEffect(() => {
@@ -17,13 +18,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <>
+    <AuthProvider>
       <Sidebar />
       <div className={`transition-all ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
         <Header />
         <main className="p-6 animate-fade-in">{children}</main>
       </div>
       <CommandPalette />
-    </>
+    </AuthProvider>
   );
 }

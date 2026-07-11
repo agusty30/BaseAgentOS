@@ -307,3 +307,34 @@ export interface Notification {
   actionUrl?: string;
   createdAt: string;
 }
+
+export interface AIProvider {
+  id: string;
+  name: string;
+  slug: string;
+  baseUrl: string;
+  defaultModel: string;
+  isDefault: boolean;
+  status: 'active' | 'inactive';
+  hasApiKey: boolean;
+  apiKeyLast4: string | null;
+  createdAt: string;
+}
+
+export interface CreateAIProviderInput {
+  name: string;
+  slug: string;
+  baseUrl: string;
+  apiKey: string;
+  defaultModel: string;
+  isDefault?: boolean;
+}
+
+export interface UpdateAIProviderInput {
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  defaultModel?: string;
+  isDefault?: boolean;
+  status?: 'active' | 'inactive';
+}

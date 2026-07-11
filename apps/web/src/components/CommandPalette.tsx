@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/stores/app.store';
 
 const pages = [
-  { name: 'Dashboard', href: '/' },
+  { name: 'Dashboard', href: '/dashboard' },
   { name: 'Wallets', href: '/wallets' },
   { name: 'Payments', href: '/payments' },
   { name: 'Trading', href: '/trading' },

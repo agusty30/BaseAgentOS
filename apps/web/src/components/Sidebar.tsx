@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app.store';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: '◈' },
+  { name: 'Dashboard', href: '/dashboard', icon: '◈' },
   { name: 'Wallets', href: '/wallets', icon: '◇' },
   { name: 'Payments', href: '/payments', icon: '$' },
   { name: 'Trading', href: '/trading', icon: '⇄' },
@@ -37,7 +37,7 @@ export function Sidebar() {
 
       <nav className="flex flex-col gap-1 p-3">
         {navigation.map((item) => {
-          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
