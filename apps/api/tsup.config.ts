@@ -9,4 +9,14 @@ export default defineConfig({
   platform: 'node',
   target: 'node20',
   clean: true,
+  banner: {
+    js: [
+      "import { createRequire as __cr } from 'module';",
+      "import { fileURLToPath as __fu } from 'url';",
+      "import { dirname as __dn } from 'path';",
+      "const require = __cr(import.meta.url);",
+      "const __filename = __fu(import.meta.url);",
+      "const __dirname = __dn(__filename);",
+    ].join('\n'),
+  },
 })
