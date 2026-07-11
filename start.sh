@@ -2,10 +2,11 @@
 set -e
 
 # Start Fastify API server in background
-cd /app
 echo "Starting API server..."
-NODE_PATH=/app/root_node_modules:/app/apps/api/node_modules node apps/api/dist/server.js &
+cd /app/api
+node server.js &
 API_PID=$!
+cd /app
 
 # Wait for API to be ready (up to 30s)
 echo "Waiting for API server on port 3001..."
