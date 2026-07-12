@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 
+function fmt(value: string | number | undefined, decimals = 2): string {
+  const num = parseFloat(String(value || '0'));
+  if (isNaN(num)) return '0.00';
+  return num.toFixed(decimals);
+}
+
 export default function PortfolioPage() {
   const { accessToken } = useAuthStore();
   const [portfolio, setPortfolio] = useState<any>(null);
@@ -60,15 +66,15 @@ export default function PortfolioPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
           <p className="text-sm text-slate-500 dark:text-slate-400">Total Value</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">${portfolio?.totalValueUsd || '0.00'}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">${fmt(portfolio?.totalValueUsd)}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
           <p className="text-sm text-slate-500 dark:text-slate-400">USDC Balance</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">${portfolio?.usdcBalance || '0.00'}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">${fmt(portfolio?.usdcBalance)}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
           <p className="text-sm text-slate-500 dark:text-slate-400">ETH Balance</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{portfolio?.ethBalance || '0.00'} ETH</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{fmt(portfolio?.ethBalance, 6)} ETH</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
           <p className="text-sm text-slate-500 dark:text-slate-400">Tokens</p>
@@ -93,9 +99,9 @@ export default function PortfolioPage() {
                 {history.map((h: any) => (
                   <tr key={h.id} className="border-b border-slate-100 last:border-0 dark:border-slate-700/50">
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{new Date(h.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">${h.totalValueUsd}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">${h.usdcBalance}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{h.ethBalance} ETH</td>
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">${fmt(h.totalValueUsd)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">${fmt(h.usdcBalance)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{fmt(h.ethBalance, 6)} ETH</td>
                   </tr>
                 ))}
               </tbody>

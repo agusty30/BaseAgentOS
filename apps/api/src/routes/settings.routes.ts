@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { db } from '../db/index.js';
-import { settings } from '../db/schema.js';
+import { settings, users } from '../db/schema.js';
 import { encrypt, decrypt } from '../security/encryption.js';
 import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
@@ -90,6 +90,30 @@ function maskApiKey(encryptedKey: string): string {
 
 export async function settingsRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authenticate);
+
+  // PATCH /profile — Update user profile
+  app.patch('/profile', async (request, reply) => {
+    const body = z.object({
+      name: z.string().min(1).max(100).optional(),
+      email: z.string().email().optional(),
+    }).parse(request.body);
+
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (body.name) updateData.name = body.name;
+    if (body.email) updateData.email = body.email;
+
+    const [updated] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, request.user.id))
+      .returning();
+
+    if (!updated) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    return { user: { id: updated.id, email: updated.email, name: updated.name, role: updated.role } };
+  });
 
   // GET /ai-providers — List all configured AI providers
   app.get('/ai-providers', async (request) => {
@@ -244,19 +268,42 @@ export async function settingsRoutes(app: FastifyInstance) {
     const startTime = Date.now();
 
     try {
-      const response = await fetch(`${provider.baseUrl}/v1/models`, {
+      // Different providers use different auth headers and test endpoints
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      let testUrl = `${provider.baseUrl}/v1/models`;
+
+      if (slug === 'anthropic' || provider.baseUrl.includes('anthropic')) {
+        headers['x-api-key'] = decryptedKey;
+        headers['anthropic-version'] = '2023-06-01';
+      } else if (slug === 'openai' || provider.baseUrl.includes('openai')) {
+        headers['Authorization'] = `Bearer ${decryptedKey}`;
+      } else {
+        // Generic: send both headers (works for OpenRouter, AgentRouter, etc.)
+        headers['Authorization'] = `Bearer ${decryptedKey}`;
+        headers['x-api-key'] = decryptedKey;
+      }
+
+      const response = await fetch(testUrl, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${decryptedKey}`,
-          'x-api-key': decryptedKey,
-          'Content-Type': 'application/json',
-        },
+        headers,
         signal: AbortSignal.timeout(10_000),
       });
 
       const latencyMs = Date.now() - startTime;
 
       if (!response.ok) {
+        // Try alternative endpoint for providers that don't support /v1/models
+        const altUrl = `${provider.baseUrl}/models`;
+        const altResponse = await fetch(altUrl, {
+          method: 'GET',
+          headers,
+          signal: AbortSignal.timeout(10_000),
+        }).catch(() => null);
+
+        if (altResponse?.ok) {
+          return { success: true, latencyMs: Date.now() - startTime };
+        }
+
         return {
           success: false,
           latencyMs,

@@ -29,11 +29,14 @@ export default function TradingPage() {
   const [quoting, setQuoting] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [trades, setTrades] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [selectedWallet, setSelectedWallet] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!accessToken) return;
     loadTrades();
+    loadWallets();
   }, [accessToken]);
 
   async function loadTrades() {
@@ -42,6 +45,19 @@ export default function TradingPage() {
       setTrades(data || []);
     } catch {
       setTrades([]);
+    }
+  }
+
+  async function loadWallets() {
+    try {
+      const data = await api.getWallets();
+      setWallets(data || []);
+      if (data?.length > 0 && !selectedWallet) {
+        const def = data.find((w: any) => w.isDefault) || data[0];
+        setSelectedWallet(def.id);
+      }
+    } catch {
+      setWallets([]);
     }
   }
 
@@ -77,6 +93,7 @@ export default function TradingPage() {
     setError('');
     try {
       await api.executeSwap({
+        walletId: selectedWallet,
         tokenIn: getTokenAddress(tokenIn),
         tokenOut: getTokenAddress(tokenOut),
         amountIn: amount,
@@ -156,7 +173,21 @@ export default function TradingPage() {
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Swap</h2>
             {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
+            {wallets.length === 0 ? (
+              <div className="text-center py-6 text-sm text-slate-500">
+                <p>No wallets found.</p>
+                <p className="mt-1">Create a wallet first to start trading.</p>
+              </div>
+            ) : (
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Wallet</label>
+                <select value={selectedWallet} onChange={(e) => setSelectedWallet(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                  {wallets.map((w: any) => (
+                    <option key={w.id} value={w.id}>{w.name} ({w.address?.slice(0, 6)}...{w.address?.slice(-4)})</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">You Pay</label>
                 <div className="flex gap-2">
@@ -215,7 +246,7 @@ export default function TradingPage() {
               )}
 
               {!quote ? (
-                <button onClick={handleGetQuote} disabled={!amount || quoting || tokenIn === tokenOut} className="w-full rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50">
+                <button onClick={handleGetQuote} disabled={!amount || quoting || tokenIn === tokenOut || !selectedWallet} className="w-full rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50">
                   {quoting ? 'Getting Quote...' : 'Get Quote'}
                 </button>
               ) : (
@@ -224,6 +255,7 @@ export default function TradingPage() {
                 </button>
               )}
             </div>
+            )}
           </div>
         </div>
 

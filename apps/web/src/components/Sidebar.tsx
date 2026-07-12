@@ -27,9 +27,7 @@ export function Sidebar() {
       sidebarOpen ? 'w-64' : 'w-16',
     )}>
       <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-4 dark:border-slate-700">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white text-sm font-bold">
-          B
-        </div>
+        <img src="/logo.svg" alt="BaseAgent OS" width={32} height={32} className="rounded-lg shrink-0" />
         {sidebarOpen && (
           <span className="font-semibold text-slate-900 dark:text-white">BaseAgent OS</span>
         )}

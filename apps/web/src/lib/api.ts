@@ -106,7 +106,10 @@ class ApiClient {
   getNotifications(limit = 50) { return this.request<any[]>('GET', `/api/notifications?limit=${limit}`); }
   markNotificationRead(id: string) { return this.request('PATCH', `/api/notifications/${id}/read`); }
 
-  // AI Providers
+  // Settings
+  updateProfile(data: { name?: string; email?: string }) {
+    return this.request<{ user: any }>('PATCH', '/api/settings/profile', data);
+  }
   getAIProviders() { return this.request<{ providers: any[] }>('GET', '/api/settings/ai-providers'); }
   addAIProvider(data: { name: string; slug: string; baseUrl: string; apiKey: string; defaultModel: string; isDefault?: boolean }) {
     return this.request<{ provider: any }>('POST', '/api/settings/ai-providers', data);

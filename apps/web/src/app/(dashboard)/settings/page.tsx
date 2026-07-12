@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/app.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/lib/api';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent, Badge } from '@baseagent/ui';
 
@@ -22,12 +23,14 @@ const PRESETS = [
   { name: 'OpenAI', slug: 'openai', baseUrl: 'https://api.openai.com', defaultModel: 'gpt-4o' },
   { name: 'Google Gemini', slug: 'google', baseUrl: 'https://generativelanguage.googleapis.com', defaultModel: 'gemini-2.5-flash' },
   { name: 'OpenRouter', slug: 'openrouter', baseUrl: 'https://openrouter.ai/api', defaultModel: 'anthropic/claude-sonnet-4' },
+  { name: 'AgentRouter', slug: 'agentrouter', baseUrl: 'https://api.agentrouter.ai', defaultModel: 'claude-sonnet-4' },
   { name: 'Grok', slug: 'grok', baseUrl: 'https://api.x.ai', defaultModel: 'grok-3' },
   { name: 'DeepSeek', slug: 'deepseek', baseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-chat' },
 ];
 
 export default function SettingsPage() {
   const { network, setNetwork } = useAppStore();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('general');
 
   const tabs = [
@@ -51,16 +54,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {activeTab === 'general' && (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Profile</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label><input type="text" defaultValue="Admin" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" /></div>
-            <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label><input type="email" defaultValue="admin@baseagent.os" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" /></div>
-          </div>
-          <button className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover">Save Changes</button>
-        </div>
-      )}
+      {activeTab === 'general' && <ProfileTab />}
 
       {activeTab === 'ai-providers' && <AIProvidersTab />}
 
@@ -118,10 +112,63 @@ export default function SettingsPage() {
   );
 }
 
+function ProfileTab() {
+  const { user } = useAuthStore();
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+    }
+  }, [user]);
+
+  async function handleSave() {
+    setSaving(true);
+    setError('');
+    setSaved(false);
+    try {
+      await api.updateProfile({ name, email });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 space-y-4">
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Profile</h2>
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      {saved && <p className="text-sm text-green-500">Profile saved successfully!</p>}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+        </div>
+      </div>
+      <button onClick={handleSave} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover disabled:opacity-50">
+        {saving ? 'Saving...' : 'Save Changes'}
+      </button>
+    </div>
+  );
+}
+
 function AIProvidersTab() {
   const [providers, setProviders] = useState<AIProviderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [testingSlug, setTestingSlug] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ slug: string; success: boolean; latencyMs?: number; error?: string } | null>(null);
 
@@ -157,6 +204,21 @@ function AIProvidersTab() {
     }
   }
 
+  function resetForm() {
+    setFormName(''); setFormSlug(''); setFormBaseUrl(''); setFormApiKey(''); setFormModel(''); setFormDefault(false); setFormError('');
+  }
+
+  function startEdit(p: AIProviderRow) {
+    setEditingSlug(p.slug);
+    setFormName(p.name);
+    setFormSlug(p.slug);
+    setFormBaseUrl(p.baseUrl);
+    setFormModel(p.defaultModel);
+    setFormApiKey('');
+    setFormDefault(p.isDefault);
+    setShowAddForm(false);
+  }
+
   async function handleAdd() {
     setSaving(true);
     setFormError('');
@@ -170,10 +232,33 @@ function AIProvidersTab() {
         isDefault: formDefault,
       });
       setShowAddForm(false);
-      setFormName(''); setFormSlug(''); setFormBaseUrl(''); setFormApiKey(''); setFormModel(''); setFormDefault(false);
+      resetForm();
       await fetchProviders();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to add provider');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdate() {
+    if (!editingSlug) return;
+    setSaving(true);
+    setFormError('');
+    try {
+      const data: Record<string, unknown> = {
+        name: formName,
+        baseUrl: formBaseUrl,
+        defaultModel: formModel,
+        isDefault: formDefault,
+      };
+      if (formApiKey) data.apiKey = formApiKey;
+      await api.updateAIProvider(editingSlug, data);
+      setEditingSlug(null);
+      resetForm();
+      await fetchProviders();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to update provider');
     } finally {
       setSaving(false);
     }
@@ -221,6 +306,8 @@ function AIProvidersTab() {
     );
   }
 
+  const isEditing = editingSlug !== null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -228,40 +315,44 @@ function AIProvidersTab() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">AI Providers</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">Configure AI providers for autonomous agent operations.</p>
         </div>
-        <Button variant="primary" onClick={() => setShowAddForm(!showAddForm)}>
-          {showAddForm ? 'Cancel' : '+ Add Provider'}
-        </Button>
+        {!isEditing && (
+          <Button variant="primary" onClick={() => { setShowAddForm(!showAddForm); resetForm(); }}>
+            {showAddForm ? 'Cancel' : '+ Add Provider'}
+          </Button>
+        )}
       </div>
 
-      {showAddForm && (
+      {(showAddForm || isEditing) && (
         <Card className="border-slate-200 dark:border-slate-700">
           <CardHeader>
-            <CardTitle className="text-base">Add AI Provider</CardTitle>
+            <CardTitle className="text-base">{isEditing ? `Edit: ${editingSlug}` : 'Add AI Provider'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Quick Presets</label>
-              <div className="flex flex-wrap gap-2">
-                {PRESETS.map((p) => (
-                  <button
-                    key={p.slug}
-                    onClick={() => selectPreset(p.slug)}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    {p.name}
-                  </button>
-                ))}
+            {!isEditing && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Quick Presets</label>
+                <div className="flex flex-wrap gap-2">
+                  {PRESETS.map((p) => (
+                    <button
+                      key={p.slug}
+                      onClick={() => selectPreset(p.slug)}
+                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Provider Name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Anthropic" />
-              <Input label="Slug" value={formSlug} onChange={(e) => setFormSlug(e.target.value)} placeholder="e.g. anthropic" />
+              {!isEditing && <Input label="Slug" value={formSlug} onChange={(e) => setFormSlug(e.target.value)} placeholder="e.g. anthropic" />}
               <Input label="Base URL" value={formBaseUrl} onChange={(e) => setFormBaseUrl(e.target.value)} placeholder="https://api.anthropic.com" />
               <Input label="Default Model" value={formModel} onChange={(e) => setFormModel(e.target.value)} placeholder="claude-sonnet-4-20250514" />
             </div>
 
-            <Input label="API Key" type="password" value={formApiKey} onChange={(e) => setFormApiKey(e.target.value)} placeholder="sk-..." />
+            <Input label={isEditing ? 'API Key (leave blank to keep current)' : 'API Key'} type="password" value={formApiKey} onChange={(e) => setFormApiKey(e.target.value)} placeholder="sk-..." />
 
             <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
               <input type="checkbox" checked={formDefault} onChange={(e) => setFormDefault(e.target.checked)} className="rounded" />
@@ -274,9 +365,16 @@ function AIProvidersTab() {
               </div>
             )}
 
-            <Button variant="primary" onClick={handleAdd} loading={saving} className="w-full">
-              Add Provider
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="primary" onClick={isEditing ? handleUpdate : handleAdd} loading={saving} className="flex-1">
+                {isEditing ? 'Save Changes' : 'Add Provider'}
+              </Button>
+              {isEditing && (
+                <Button variant="outline" onClick={() => { setEditingSlug(null); resetForm(); }}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -312,6 +410,12 @@ function AIProvidersTab() {
               </div>
 
               <div className="flex items-center gap-2 ml-4">
+                <button
+                  onClick={() => startEdit(p)}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+                >
+                  Edit
+                </button>
                 <button
                   onClick={() => handleTest(p.slug)}
                   disabled={testingSlug === p.slug}

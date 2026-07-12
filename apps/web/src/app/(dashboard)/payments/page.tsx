@@ -9,7 +9,7 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ recipient: '', amount: '', token: 'USDC', type: 'one-time' as string });
+  const [formData, setFormData] = useState({ name: '', category: 'transfer', recipient: '', amount: '', token: 'USDC', type: 'one-time' as string });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,13 +34,15 @@ export default function PaymentsPage() {
     setError('');
     try {
       await api.createPayment({
+        name: formData.name,
+        category: formData.category,
         recipient: formData.recipient,
         amount: formData.amount,
         token: formData.token,
         type: formData.type,
         network: 'base-sepolia',
       });
-      setFormData({ recipient: '', amount: '', token: 'USDC', type: 'one-time' });
+      setFormData({ name: '', category: 'transfer', recipient: '', amount: '', token: 'USDC', type: 'one-time' });
       setShowForm(false);
       loadPayments();
     } catch (err: any) {
@@ -73,6 +75,22 @@ export default function PaymentsPage() {
           {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Payment Name</label>
+              <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Freelancer Payment" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
+              <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                <option value="transfer">Transfer</option>
+                <option value="salary">Salary</option>
+                <option value="invoice">Invoice</option>
+                <option value="subscription">Subscription</option>
+                <option value="refund">Refund</option>
+                <option value="fee">Fee</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Recipient Address</label>
               <input type="text" value={formData.recipient} onChange={(e) => setFormData({ ...formData, recipient: e.target.value })} placeholder="0x..." className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
             </div>
@@ -86,6 +104,7 @@ export default function PaymentsPage() {
                 <option value="one-time">One-time</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="recurring">Recurring</option>
+                <option value="x402">x402 Agent Payment</option>
               </select>
             </div>
           </div>
@@ -109,6 +128,8 @@ export default function PaymentsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Recipient</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Amount</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Type</th>
@@ -119,6 +140,8 @@ export default function PaymentsPage() {
               <tbody>
                 {payments.map((p: any) => (
                   <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-700/50 dark:hover:bg-slate-700/30">
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{p.name || '—'}</td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize dark:bg-slate-700">{p.category || '—'}</span></td>
                     <td className="px-4 py-3 text-sm font-mono text-slate-700 dark:text-slate-300">{p.recipient ? `${p.recipient.slice(0, 6)}...${p.recipient.slice(-4)}` : '—'}</td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{p.amount} {p.token}</td>
                     <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs dark:bg-slate-700">{p.type}</span></td>

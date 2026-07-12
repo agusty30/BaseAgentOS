@@ -21,59 +21,60 @@ export async function walletRoutes(app: FastifyInstance) {
 
   app.post('/', async (request) => {
     const body = createWalletSchema.parse(request.body);
-    return walletService.create({
-      userId: request.user.id,
-      name: body.name,
-      isTreasury: body.isTreasury,
-      isAgent: body.isAgent,
-      network: body.network,
-    });
+    const wallet = await walletService.createEOAWallet(
+      request.user.id,
+      body.name,
+      body.network,
+    );
+    if (body.isTreasury) {
+      return walletService.setTreasuryWallet(wallet.id, request.user.id);
+    }
+    return wallet;
   });
 
   app.post('/import', async (request) => {
     const body = importWalletSchema.parse(request.body);
-    return walletService.importWallet({
-      userId: request.user.id,
-      name: body.name,
-      privateKey: body.privateKey,
-      network: body.network,
-    });
+    return walletService.importWallet(
+      request.user.id,
+      body.name,
+      body.privateKey,
+      body.network,
+    );
   });
 
   app.get('/', async (request) => {
-    return walletService.listByUser(request.user.id);
+    return walletService.getUserWallets(request.user.id);
   });
 
   app.get('/:id', async (request) => {
     const { id } = request.params as { id: string };
-    return walletService.getById(id);
+    return walletService.getWalletById(id, request.user.id);
   });
 
   app.get('/:id/balance', async (request) => {
     const { id } = request.params as { id: string };
-    const { network } = request.query as { network?: string };
-    return walletService.getBalance(id, (network || 'base-sepolia') as 'base-mainnet' | 'base-sepolia');
+    return walletService.getWalletBalance(id, request.user.id);
   });
 
   app.patch('/:id', async (request) => {
     const { id } = request.params as { id: string };
     const body = z.object({ name: z.string().min(1).max(100) }).parse(request.body);
-    return walletService.rename(id, body.name);
+    return walletService.updateWallet(id, request.user.id, { name: body.name });
   });
 
   app.post('/:id/set-default', async (request) => {
     const { id } = request.params as { id: string };
-    return walletService.setDefault(request.user.id, id);
+    return walletService.setDefaultWallet(id, request.user.id);
   });
 
   app.post('/:id/set-treasury', async (request) => {
     const { id } = request.params as { id: string };
-    return walletService.setTreasury(request.user.id, id);
+    return walletService.setTreasuryWallet(id, request.user.id);
   });
 
   app.delete('/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    await walletService.delete(id);
+    await walletService.deleteWallet(id, request.user.id);
     return reply.status(204).send();
   });
 }
