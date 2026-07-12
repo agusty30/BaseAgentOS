@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth.store';
 
 type MissionStatus = 'planning' | 'queued' | 'running' | 'waiting_confirmation' | 'simulation' | 'executing' | 'completed' | 'failed' | 'retrying' | 'cancelled';
 
@@ -17,33 +19,60 @@ const statusConfig: Record<MissionStatus, { color: string; bg: string }> = {
   cancelled: { color: 'text-slate-500 dark:text-slate-500', bg: 'bg-slate-100 dark:bg-slate-800' },
 };
 
-const mockMissions = [
-  { id: '1', title: 'USDC Transfer to 0xAbC...dEf', agent: 'payment', status: 'completed' as MissionStatus, duration: '4.2s', time: '5m ago', correlationId: 'corr-001', gasUsed: '0.0012 ETH', network: 'Base Sepolia' },
-  { id: '2', title: 'Swap 500 USDC → ETH', agent: 'trading', status: 'running' as MissionStatus, duration: '—', time: '2m ago', correlationId: 'corr-002', gasUsed: '—', network: 'Base Sepolia' },
-  { id: '3', title: 'DCA Strategy Execution', agent: 'trading', status: 'waiting_confirmation' as MissionStatus, duration: '—', time: '10m ago', correlationId: 'corr-003', gasUsed: '—', network: 'Base Sepolia' },
-  { id: '4', title: 'Portfolio Rebalance Analysis', agent: 'portfolio', status: 'completed' as MissionStatus, duration: '8.1s', time: '1h ago', correlationId: 'corr-004', gasUsed: '0.0008 ETH', network: 'Base Sepolia' },
-  { id: '5', title: 'Treasury Optimization', agent: 'treasury', status: 'failed' as MissionStatus, duration: '12.3s', time: '2h ago', correlationId: 'corr-005', gasUsed: '0.0001 ETH', network: 'Base Mainnet' },
-];
-
-const mockSteps = [
-  { name: 'Planner', status: 'completed', duration: '0.3s' },
-  { name: 'Validator', status: 'completed', duration: '0.1s' },
-  { name: 'Risk Assessment', status: 'completed', duration: '0.5s' },
-  { name: 'Simulation', status: 'completed', duration: '1.2s' },
-  { name: 'User Approval', status: 'completed', duration: '—' },
-  { name: 'Execution', status: 'running', duration: '—' },
-  { name: 'Confirmation', status: 'pending', duration: '—' },
-  { name: 'Analytics', status: 'pending', duration: '—' },
-];
-
-const allStatuses: (MissionStatus | 'all')[] = ['all', 'planning', 'queued', 'running', 'waiting_confirmation', 'simulation', 'executing', 'completed', 'failed', 'retrying', 'cancelled'];
+const allStatuses: (MissionStatus | 'all')[] = ['all', 'running', 'waiting_confirmation', 'completed', 'failed', 'cancelled'];
 
 export default function MissionControlPage() {
+  const { accessToken } = useAuthStore();
+  const [missions, setMissions] = useState<any[]>([]);
+  const [steps, setSteps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<MissionStatus | 'all'>('all');
   const [selected, setSelected] = useState<string | null>(null);
 
-  const filtered = filter === 'all' ? mockMissions : mockMissions.filter((m) => m.status === filter);
-  const selectedMission = mockMissions.find((m) => m.id === selected);
+  useEffect(() => {
+    if (!accessToken) return;
+    loadMissions();
+  }, [accessToken]);
+
+  async function loadMissions() {
+    try {
+      const data = await api.getMissions();
+      setMissions(data || []);
+    } catch {
+      setMissions([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function selectMission(id: string) {
+    setSelected(id);
+    try {
+      const stepsData = await api.getMissionSteps(id);
+      setSteps(stepsData || []);
+    } catch {
+      setSteps([]);
+    }
+  }
+
+  async function handleApprove(id: string) {
+    try { await api.approveMission(id); loadMissions(); } catch {}
+  }
+
+  async function handleCancel(id: string) {
+    try { await api.cancelMission(id); loadMissions(); } catch {}
+  }
+
+  const filtered = filter === 'all' ? missions : missions.filter((m) => m.status === filter);
+  const selectedMission = missions.find((m) => m.id === selected);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -63,71 +92,80 @@ export default function MissionControlPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-3">
-          {filtered.map((m) => {
-            const sc = statusConfig[m.status];
-            return (
-              <div key={m.id} onClick={() => setSelected(m.id)} className={`cursor-pointer rounded-xl border bg-white p-4 transition-all hover:shadow-md dark:bg-slate-800 ${selected === m.id ? 'border-brand' : 'border-slate-200 dark:border-slate-700'}`}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-medium text-slate-900 dark:text-white">{m.title}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{m.agent} agent · {m.time}</p>
-                  </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sc.bg} ${sc.color}`}>{m.status.replace('_', ' ')}</span>
-                </div>
-                <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
-                  <span>Duration: {m.duration}</span>
-                  <span>Gas: {m.gasUsed}</span>
-                  <span>{m.network}</span>
-                </div>
-              </div>
-            );
-          })}
+      {missions.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
+          <p className="text-lg font-semibold text-slate-900 dark:text-white">No missions yet</p>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Missions are created by AI agents when executing payments, trades, and strategies.
+          </p>
         </div>
-
-        {selectedMission && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Mission Details</h2>
-              <div className="flex gap-2">
-                {selectedMission.status === 'waiting_confirmation' && (
-                  <button className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">Approve</button>
-                )}
-                {!['completed', 'failed', 'cancelled'].includes(selectedMission.status) && (
-                  <button className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 dark:border-red-800">Cancel</button>
-                )}
-                {selectedMission.status === 'completed' && (
-                  <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium dark:border-slate-600 dark:text-white">Replay</button>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-sm"><span className="text-slate-500">Correlation ID</span><span className="font-mono text-slate-900 dark:text-white">{selectedMission.correlationId}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-slate-500">Agent</span><span className="text-slate-900 dark:text-white">{selectedMission.agent}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-slate-500">Network</span><span className="text-slate-900 dark:text-white">{selectedMission.network}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-slate-500">Duration</span><span className="text-slate-900 dark:text-white">{selectedMission.duration}</span></div>
-            </div>
-
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Execution Timeline</h3>
-            <div className="space-y-0">
-              {mockSteps.map((step, i) => (
-                <div key={i} className="relative flex gap-3 pb-4 last:pb-0">
-                  <div className="flex flex-col items-center">
-                    <div className={`h-2.5 w-2.5 rounded-full mt-1.5 ${step.status === 'completed' ? 'bg-green-500' : step.status === 'running' ? 'bg-amber-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                    {i < mockSteps.length - 1 && <div className="w-0.5 flex-1 mt-1 bg-slate-200 dark:bg-slate-700" />}
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="space-y-3">
+            {filtered.map((m: any) => {
+              const sc = statusConfig[m.status as MissionStatus] || statusConfig.queued;
+              return (
+                <div key={m.id} onClick={() => selectMission(m.id)} className={`cursor-pointer rounded-xl border bg-white p-4 transition-all hover:shadow-md dark:bg-slate-800 ${selected === m.id ? 'border-brand' : 'border-slate-200 dark:border-slate-700'}`}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-slate-900 dark:text-white">{m.title}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">{m.agentType} agent · {new Date(m.createdAt).toLocaleString()}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sc.bg} ${sc.color}`}>{m.status.replace('_', ' ')}</span>
                   </div>
-                  <div className="flex-1 flex items-center justify-between pb-1">
-                    <span className="text-sm text-slate-700 dark:text-slate-300">{step.name}</span>
-                    <span className="text-xs text-slate-500">{step.duration}</span>
+                  <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
+                    {m.duration && <span>Duration: {m.duration}ms</span>}
+                    <span>{m.network}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+
+          {selectedMission && (
+            <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Mission Details</h2>
+                <div className="flex gap-2">
+                  {selectedMission.status === 'waiting_confirmation' && (
+                    <button onClick={() => handleApprove(selectedMission.id)} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">Approve</button>
+                  )}
+                  {!['completed', 'failed', 'cancelled'].includes(selectedMission.status) && (
+                    <button onClick={() => handleCancel(selectedMission.id)} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 dark:border-red-800">Cancel</button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-sm"><span className="text-slate-500">Agent</span><span className="text-slate-900 dark:text-white">{selectedMission.agentType}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">Network</span><span className="text-slate-900 dark:text-white">{selectedMission.network}</span></div>
+                {selectedMission.txHash && <div className="flex justify-between text-sm"><span className="text-slate-500">Tx Hash</span><span className="font-mono text-xs text-slate-900 dark:text-white">{selectedMission.txHash}</span></div>}
+                <div className="flex justify-between text-sm"><span className="text-slate-500">Description</span><span className="text-slate-900 dark:text-white text-right max-w-xs">{selectedMission.description}</span></div>
+              </div>
+
+              {steps.length > 0 && (
+                <>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Execution Steps</h3>
+                  <div className="space-y-0">
+                    {steps.map((step: any, i: number) => (
+                      <div key={step.id || i} className="relative flex gap-3 pb-4 last:pb-0">
+                        <div className="flex flex-col items-center">
+                          <div className={`h-2.5 w-2.5 rounded-full mt-1.5 ${step.status === 'completed' ? 'bg-green-500' : step.status === 'running' ? 'bg-amber-500 animate-pulse' : step.status === 'failed' ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                          {i < steps.length - 1 && <div className="w-0.5 flex-1 mt-1 bg-slate-200 dark:bg-slate-700" />}
+                        </div>
+                        <div className="flex-1 flex items-center justify-between pb-1">
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{step.name}</span>
+                          <span className="text-xs text-slate-500">{step.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
