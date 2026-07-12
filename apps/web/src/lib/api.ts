@@ -39,7 +39,7 @@ class ApiClient {
     return this.request<{ user: any; accessToken: string }>('POST', '/api/auth/login', data);
   }
   refresh() {
-    return this.request<{ accessToken: string }>('POST', '/api/auth/refresh');
+    return this.request<{ accessToken: string; user: any }>('POST', '/api/auth/refresh');
   }
   logout() {
     return this.request('POST', '/api/auth/logout');

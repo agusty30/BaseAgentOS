@@ -97,11 +97,11 @@ export async function authRoutes(app: FastifyInstance) {
       reply.setCookie('refresh_token', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/api/auth/refresh',
+        sameSite: 'lax',
+        path: '/',
         maxAge: 7 * 24 * 60 * 60,
       });
-      return { accessToken };
+      return { accessToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
     } catch {
       return reply.status(401).send({ error: 'Invalid refresh token' });
     }

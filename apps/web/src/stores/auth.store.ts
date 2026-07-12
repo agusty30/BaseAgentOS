@@ -89,9 +89,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   refreshToken: async () => {
     try {
-      const { accessToken } = await api.refresh();
+      const { accessToken, user } = await api.refresh();
       api.setToken(accessToken);
-      set({ accessToken, isAuthenticated: true });
+      set({ accessToken, user, isAuthenticated: true });
       return true;
     } catch {
       api.clearToken();

@@ -185,9 +185,7 @@ export default function MarketingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0052FF] text-sm font-bold text-white">
-              B
-            </span>
+            <img src="/logo.svg" alt="BaseAgent OS" width={32} height={32} className="rounded-lg" />
             <span className="text-lg font-semibold tracking-tight text-white">
               BaseAgent OS
             </span>
@@ -420,9 +418,7 @@ export default function MarketingPage() {
       <footer className="border-t border-white/[0.08] py-10 px-6">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0052FF] text-sm font-bold text-white">
-              B
-            </span>
+            <img src="/logo.svg" alt="BaseAgent OS" width={32} height={32} className="rounded-lg" />
             <div>
               <span className="text-sm font-semibold text-white">
                 BaseAgent OS
@@ -430,9 +426,17 @@ export default function MarketingPage() {
               <p className="text-xs text-slate-500">Built on Base Network</p>
             </div>
           </div>
-          <p className="text-xs text-slate-500">
-            &copy; 2024 BaseAgent OS. All rights reserved.
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Powered by</span>
+              <img src="/base-logo.svg" alt="BASE" width={20} height={20} />
+              <span className="text-xs font-semibold text-white">BASE</span>
+            </div>
+            <span className="text-slate-700">|</span>
+            <p className="text-xs text-slate-500">
+              &copy; 2026 BaseAgent OS. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
