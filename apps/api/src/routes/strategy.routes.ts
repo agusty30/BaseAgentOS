@@ -17,9 +17,14 @@ const createStrategySchema = z.object({
 export async function strategyRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authenticate);
 
-  app.post('/', async (request) => {
+  app.post('/', async (request, reply) => {
     const body = createStrategySchema.parse(request.body);
-    return strategyService.create({ ...body, userId: request.user.id });
+    try {
+      return await strategyService.create({ ...body, userId: request.user.id });
+    } catch (err: any) {
+      reply.status(400);
+      return { error: err.message || 'Failed to create strategy' };
+    }
   });
 
   app.get('/', async (request) => {

@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../middleware/auth.js';
 import { db } from '../db/index.js';
-import { payments, trades, missions, agentExecutions, wallets } from '../db/schema.js';
-import { eq, count, avg, sum, sql } from 'drizzle-orm';
+import { payments, trades, missions, agentExecutions, wallets, strategies } from '../db/schema.js';
+import { eq, count, avg, sum, sql, and } from 'drizzle-orm';
+import { getWalletBalance } from '../services/wallet.service.js';
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authenticate);
@@ -18,15 +19,36 @@ export async function dashboardRoutes(app: FastifyInstance) {
       .where(sql`${trades.userId} = ${userId} AND ${trades.status} = 'completed'`);
     const [pendingMissions] = await db.select({ count: count() }).from(missions)
       .where(sql`${missions.userId} = ${userId} AND ${missions.approvalStatus} = 'pending'`);
+    const [activeStrategyCount] = await db.select({ count: count() }).from(strategies)
+      .where(sql`${strategies.userId} = ${userId} AND ${strategies.status} = 'active'`);
 
     const userWallets = await db.select().from(wallets).where(eq(wallets.userId, userId));
 
+    let treasuryBalance = '0.00';
+    let totalEth = 0;
+    let totalUsdc = 0;
+    const treasuryWallet = userWallets.find(w => w.isTreasury);
+    try {
+      if (treasuryWallet) {
+        const bal = await getWalletBalance(treasuryWallet.id, userId);
+        totalUsdc = parseFloat(bal.usdc || '0');
+        totalEth = parseFloat(bal.eth || '0');
+        treasuryBalance = totalUsdc.toFixed(2);
+      }
+    } catch {
+      // Balance fetch may fail if RPC is down
+    }
+
     return {
-      treasuryValue: '0.00',
-      walletBalance: '0.00',
-      usdcBalance: '0.00',
+      treasuryValue: treasuryBalance,
+      treasuryBalance: `$${treasuryBalance}`,
+      walletBalance: totalEth.toFixed(6),
+      usdcBalance: treasuryBalance,
       walletCount: userWallets.length,
+      totalWallets: userWallets.length,
+      activeStrategies: activeStrategyCount.count,
       openPositions: 0,
+      totalTrades: tradeCount.count,
       completedTrades: completedTrades.count,
       completedPayments: completedPayments.count,
       avgTransactionSize: '0.00',

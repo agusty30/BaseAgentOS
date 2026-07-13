@@ -203,6 +203,22 @@ export async function setTreasuryWallet(
   return updated;
 }
 
+export async function setAgentWallet(
+  walletId: string,
+  userId: string,
+): Promise<typeof wallets.$inferSelect> {
+  const [updated] = await db
+    .update(wallets)
+    .set({ isAgent: true, updatedAt: new Date() })
+    .where(and(eq(wallets.id, walletId), eq(wallets.userId, userId)))
+    .returning();
+
+  if (!updated) {
+    throw new Error('Wallet not found');
+  }
+  return updated;
+}
+
 export async function getWalletBalance(
   walletId: string,
   userId: string,
@@ -317,6 +333,7 @@ export const walletService = {
   delete: deleteWallet,
   setDefault: (userId: string, walletId: string) => setDefaultWallet(walletId, userId),
   setTreasury: (userId: string, walletId: string) => setTreasuryWallet(walletId, userId),
+  setAgent: (userId: string, walletId: string) => setAgentWallet(walletId, userId),
   getBalance: (walletId: string, network: NetworkId, userId?: string) =>
     getWalletBalance(walletId, userId || ''),
   getDecryptedPrivateKey,

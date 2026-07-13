@@ -1,7 +1,6 @@
 import { db } from '../db/index.js';
 import { strategies, strategyExecutions } from '../db/schema.js';
 import { eq, desc } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 import type { StrategyType, StrategyStatus, NetworkId } from '@baseagent/shared';
 
 interface CreateStrategyParams {
@@ -19,8 +18,15 @@ interface CreateStrategyParams {
 export class StrategyService {
   async create(params: CreateStrategyParams) {
     const [strategy] = await db.insert(strategies).values({
-      id: uuidv4(),
-      ...params,
+      userId: params.userId,
+      walletId: params.walletId,
+      name: params.name,
+      type: params.type,
+      config: params.config,
+      autonomousExecution: params.autonomousExecution,
+      maxDailySpend: params.maxDailySpend,
+      maxPositionSize: params.maxPositionSize,
+      network: params.network,
       status: 'draft',
     }).returning();
     return strategy;
@@ -57,7 +63,6 @@ export class StrategyService {
 
   async logExecution(strategyId: string, tradeId: string | null, status: string, result?: Record<string, unknown>, error?: string) {
     const [execution] = await db.insert(strategyExecutions).values({
-      id: uuidv4(),
       strategyId,
       tradeId,
       status,

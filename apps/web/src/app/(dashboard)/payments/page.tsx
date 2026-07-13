@@ -7,21 +7,30 @@ import { useAuthStore } from '@/stores/auth.store';
 export default function PaymentsPage() {
   const { accessToken } = useAuthStore();
   const [payments, setPayments] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ name: '', category: 'transfer', recipient: '', amount: '', token: 'USDC', type: 'one-time' as string });
+  const [formData, setFormData] = useState({ walletId: '', name: '', category: 'transfer', recipient: '', amount: '', token: 'USDC', type: 'one-time' as string });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!accessToken) return;
-    loadPayments();
+    loadData();
   }, [accessToken]);
 
-  async function loadPayments() {
+  async function loadData() {
     try {
-      const data = await api.getPayments();
-      setPayments(data || []);
+      const [paymentData, walletData] = await Promise.all([
+        api.getPayments().catch(() => []),
+        api.getWallets().catch(() => []),
+      ]);
+      setPayments(paymentData || []);
+      setWallets(walletData || []);
+      if (walletData && walletData.length > 0 && !formData.walletId) {
+        const defaultW = walletData.find((w: any) => w.isDefault) || walletData.find((w: any) => w.isTreasury) || walletData[0];
+        if (defaultW) setFormData(prev => ({ ...prev, walletId: defaultW.id }));
+      }
     } catch {
       setPayments([]);
     } finally {
@@ -34,6 +43,7 @@ export default function PaymentsPage() {
     setError('');
     try {
       await api.createPayment({
+        walletId: formData.walletId || undefined,
         name: formData.name,
         category: formData.category,
         recipient: formData.recipient,
@@ -42,9 +52,9 @@ export default function PaymentsPage() {
         type: formData.type,
         network: 'base-sepolia',
       });
-      setFormData({ name: '', category: 'transfer', recipient: '', amount: '', token: 'USDC', type: 'one-time' });
+      setFormData(prev => ({ ...prev, name: '', recipient: '', amount: '' }));
       setShowForm(false);
-      loadPayments();
+      loadData();
     } catch (err: any) {
       setError(err.message || 'Failed to create payment');
     } finally {
@@ -74,6 +84,14 @@ export default function PaymentsPage() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Create Payment</h2>
           {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">From Wallet</label>
+              <select value={formData.walletId} onChange={(e) => setFormData({ ...formData, walletId: e.target.value })} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                {wallets.map((w: any) => (
+                  <option key={w.id} value={w.id}>{w.name} ({w.address?.slice(0, 6)}...{w.address?.slice(-4)})</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Payment Name</label>
               <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Freelancer Payment" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
@@ -140,8 +158,8 @@ export default function PaymentsPage() {
               <tbody>
                 {payments.map((p: any) => (
                   <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-700/50 dark:hover:bg-slate-700/30">
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{p.name || '—'}</td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize dark:bg-slate-700">{p.category || '—'}</span></td>
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{p.metadata?.name || p.name || '—'}</td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs capitalize dark:bg-slate-700">{p.metadata?.category || p.category || '—'}</span></td>
                     <td className="px-4 py-3 text-sm font-mono text-slate-700 dark:text-slate-300">{p.recipient ? `${p.recipient.slice(0, 6)}...${p.recipient.slice(-4)}` : '—'}</td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{p.amount} {p.token}</td>
                     <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs dark:bg-slate-700">{p.type}</span></td>

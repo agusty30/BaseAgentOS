@@ -16,6 +16,9 @@ import {
   ArrowDownLeft,
   RefreshCw,
   Send,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
 import {
   Card,
@@ -65,14 +68,17 @@ const fadeInUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } },
 };
 
-function WalletCardItem({ wallet, onSelect, onTransfer }: { wallet: any; onSelect: (w: any) => void; onTransfer: (w: any) => void }) {
+function WalletCardItem({ wallet, onSelect, onTransfer, onRenamed, refreshKey }: { wallet: any; onSelect: (w: any) => void; onTransfer: (w: any) => void; onRenamed: () => void; refreshKey: number }) {
   const [copied, setCopied] = useState(false);
   const [balance, setBalance] = useState<{ eth: string; usdc: string } | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(wallet.name);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchBalance();
-  }, [wallet.id]);
+  }, [wallet.id, refreshKey]);
 
   async function fetchBalance() {
     setLoadingBalance(true);
@@ -91,6 +97,26 @@ function WalletCardItem({ wallet, onSelect, onTransfer }: { wallet: any; onSelec
     navigator.clipboard.writeText(wallet.address);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRename = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!editName.trim() || editName === wallet.name) {
+      setEditing(false);
+      setEditName(wallet.name);
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.renameWallet(wallet.id, editName.trim());
+      onRenamed();
+      setEditing(false);
+    } catch {
+      setEditName(wallet.name);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const network = wallet.network || 'base-sepolia';
@@ -113,7 +139,32 @@ function WalletCardItem({ wallet, onSelect, onTransfer }: { wallet: any; onSelec
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <CardTitle className="text-base">{wallet.name}</CardTitle>
+                {editing ? (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleRename(e as any); if (e.key === 'Escape') { setEditing(false); setEditName(wallet.name); } }}
+                      className="w-32 rounded border border-blue-300 bg-white px-1.5 py-0.5 text-sm font-semibold dark:border-blue-600 dark:bg-slate-800 dark:text-white focus:outline-none"
+                      autoFocus
+                      disabled={saving}
+                    />
+                    <button onClick={handleRename} disabled={saving} className="rounded p-0.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20">
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setEditing(false); setEditName(wallet.name); }} className="rounded p-0.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <CardTitle className="text-base">{wallet.name}</CardTitle>
+                    <button onClick={(e) => { e.stopPropagation(); setEditing(true); setEditName(wallet.name); }} className="rounded p-0.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-600 dark:hover:text-slate-300 dark:hover:bg-slate-700 transition-colors">
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
                 {wallet.isDefault && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
               </div>
               <div className="mt-0.5 flex items-center gap-1.5">
@@ -526,6 +577,7 @@ export default function WalletsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<any>(null);
   const [transferWallet, setTransferWallet] = useState<any>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -607,7 +659,7 @@ export default function WalletsPage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {wallets.map((wallet) => (
               <motion.div key={wallet.id} variants={fadeInUp}>
-                <WalletCardItem wallet={wallet} onSelect={setSelectedWallet} onTransfer={setTransferWallet} />
+                <WalletCardItem wallet={wallet} onSelect={setSelectedWallet} onTransfer={setTransferWallet} onRenamed={loadWallets} refreshKey={refreshKey} />
               </motion.div>
             ))}
           </div>
@@ -620,7 +672,7 @@ export default function WalletsPage() {
 
       <CreateWalletDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={loadWallets} />
       <ImportWalletDialog open={importOpen} onClose={() => setImportOpen(false)} onCreated={loadWallets} />
-      <TransferDialog open={!!transferWallet} onClose={() => setTransferWallet(null)} fromWallet={transferWallet} allWallets={wallets} onDone={loadWallets} />
+      <TransferDialog open={!!transferWallet} onClose={() => setTransferWallet(null)} fromWallet={transferWallet} allWallets={wallets} onDone={() => { loadWallets(); setRefreshKey(k => k + 1); }} />
     </>
   );
 }

@@ -22,13 +22,16 @@ export async function walletRoutes(app: FastifyInstance) {
 
   app.post('/', async (request) => {
     const body = createWalletSchema.parse(request.body);
-    const wallet = await walletService.createEOAWallet(
+    let wallet = await walletService.createEOAWallet(
       request.user.id,
       body.name,
       body.network,
     );
+    if (body.isAgent) {
+      wallet = await walletService.setAgentWallet(wallet.id, request.user.id);
+    }
     if (body.isTreasury) {
-      return walletService.setTreasuryWallet(wallet.id, request.user.id);
+      wallet = await walletService.setTreasuryWallet(wallet.id, request.user.id);
     }
     return wallet;
   });
