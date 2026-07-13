@@ -57,6 +57,9 @@ class ApiClient {
   getWalletBalance(id: string, network?: string) {
     return this.request<{ eth: string; usdc: string; tokens: any[] }>('GET', `/api/wallets/${id}/balance?network=${network || 'base-sepolia'}`);
   }
+  getWalletTransactions(id: string) {
+    return this.request<{ transactions: any[]; network: string; explorerUrl: string }>('GET', `/api/wallets/${id}/transactions`);
+  }
   renameWallet(id: string, name: string) { return this.request('PATCH', `/api/wallets/${id}`, { name }); }
   setDefaultWallet(id: string) { return this.request('POST', `/api/wallets/${id}/set-default`); }
   deleteWallet(id: string) { return this.request('DELETE', `/api/wallets/${id}`); }

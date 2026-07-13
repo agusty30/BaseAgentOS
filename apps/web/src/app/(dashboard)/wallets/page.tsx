@@ -12,6 +12,9 @@ import {
   Copy,
   ExternalLink,
   ChevronDown,
+  ArrowUpRight,
+  ArrowDownLeft,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Card,
@@ -29,6 +32,12 @@ import { useAuthStore } from '@/stores/auth.store';
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function formatBalance(val: string | number, decimals = 4): string {
+  const num = parseFloat(String(val || '0'));
+  if (isNaN(num)) return '0.00';
+  return num.toFixed(decimals);
 }
 
 const walletTypeLabels: Record<WalletType, string> = {
@@ -57,6 +66,24 @@ const fadeInUp = {
 
 function WalletCardItem({ wallet, onSelect }: { wallet: any; onSelect: (w: any) => void }) {
   const [copied, setCopied] = useState(false);
+  const [balance, setBalance] = useState<{ eth: string; usdc: string } | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [wallet.id]);
+
+  async function fetchBalance() {
+    setLoadingBalance(true);
+    try {
+      const data = await api.getWalletBalance(wallet.id, wallet.network || 'base-sepolia');
+      setBalance({ eth: data.eth, usdc: data.usdc });
+    } catch {
+      setBalance(null);
+    } finally {
+      setLoadingBalance(false);
+    }
+  }
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -64,6 +91,9 @@ function WalletCardItem({ wallet, onSelect }: { wallet: any; onSelect: (w: any) 
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const network = wallet.network || 'base-sepolia';
+  const explorerBase = network === 'base-mainnet' ? 'https://basescan.org' : 'https://sepolia.basescan.org';
 
   return (
     <Card
@@ -102,19 +132,139 @@ function WalletCardItem({ wallet, onSelect }: { wallet: any; onSelect: (w: any) 
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-xs text-slate-400 dark:text-slate-500">Network: {wallet.network || 'base-sepolia'}</p>
+        <div className="space-y-2">
+          {loadingBalance ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <RefreshCw className="h-3 w-3 animate-spin" /> Loading balances...
+            </div>
+          ) : balance ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-2.5">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">ETH</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">{formatBalance(balance.eth, 6)}</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-2.5">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">USDC</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">{formatBalance(balance.usdc, 2)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">Unable to load balances</p>
+          )}
+          <p className="text-xs text-slate-400 dark:text-slate-500">Network: {network === 'base-mainnet' ? 'Base Mainnet' : 'Base Sepolia'}</p>
+        </div>
       </CardContent>
       <CardFooter className="border-t border-slate-100 dark:border-slate-800 pt-3">
         <div className="flex w-full items-center justify-between">
           <span className="text-xs text-slate-400 dark:text-slate-500">
             Created {new Date(wallet.createdAt).toLocaleDateString()}
           </span>
-          <Button variant="ghost" size="sm" rightIcon={<ExternalLink className="h-3 w-3" />} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            Explorer
-          </Button>
+          <a
+            href={`${explorerBase}/address/${wallet.address}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-xs text-brand hover:underline"
+          >
+            Explorer <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
       </CardFooter>
     </Card>
+  );
+}
+
+function TransactionHistory({ wallet, onClose }: { wallet: any; onClose: () => void }) {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [wallet.id]);
+
+  async function loadTransactions() {
+    setLoading(true);
+    try {
+      const data = await api.getWalletTransactions(wallet.id);
+      setTransactions(data.transactions || []);
+    } catch {
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const network = wallet.network || 'base-sepolia';
+  const explorerBase = network === 'base-mainnet' ? 'https://basescan.org' : 'https://sepolia.basescan.org';
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-5 py-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Transaction History</h2>
+          <p className="text-xs text-slate-500 mt-0.5">{wallet.name} — {truncateAddress(wallet.address)}</p>
+        </div>
+        <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </button>
+      </div>
+      <div className="p-5">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="h-5 w-5 animate-spin text-slate-400" />
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="text-center py-8 text-sm text-slate-500">
+            No transactions found for this wallet.
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {transactions.map((tx) => {
+              const isOutgoing = tx.from?.toLowerCase() === wallet.address?.toLowerCase();
+              const ethValue = parseFloat(tx.value) / 1e18;
+              const timestamp = new Date(parseInt(tx.timeStamp) * 1000);
+
+              return (
+                <div key={tx.hash} className="flex items-center gap-3 rounded-lg border border-slate-100 dark:border-slate-700 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <div className={cn('rounded-full p-1.5', isOutgoing ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20')}>
+                    {isOutgoing
+                      ? <ArrowUpRight className="h-3.5 w-3.5 text-red-500" />
+                      : <ArrowDownLeft className="h-3.5 w-3.5 text-green-500" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={cn('text-xs font-medium', isOutgoing ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400')}>
+                        {isOutgoing ? 'Sent' : 'Received'}
+                      </span>
+                      {tx.isError && <Badge variant="default">Failed</Badge>}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">
+                      {isOutgoing ? `To: ${truncateAddress(tx.to || '')}` : `From: ${truncateAddress(tx.from || '')}`}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      {isOutgoing ? '-' : '+'}{ethValue > 0.0001 ? ethValue.toFixed(6) : '<0.0001'} ETH
+                    </p>
+                    <p className="text-[10px] text-slate-400">{timestamp.toLocaleDateString()} {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <a
+                    href={`${explorerBase}/tx/${tx.hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand dark:hover:bg-slate-700"
+                    title="View on Explorer"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -241,6 +391,7 @@ export default function WalletsPage() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState<any>(null);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -322,10 +473,14 @@ export default function WalletsPage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {wallets.map((wallet) => (
               <motion.div key={wallet.id} variants={fadeInUp}>
-                <WalletCardItem wallet={wallet} onSelect={() => {}} />
+                <WalletCardItem wallet={wallet} onSelect={setSelectedWallet} />
               </motion.div>
             ))}
           </div>
+        )}
+
+        {selectedWallet && (
+          <TransactionHistory wallet={selectedWallet} onClose={() => setSelectedWallet(null)} />
         )}
       </motion.div>
 

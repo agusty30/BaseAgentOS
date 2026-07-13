@@ -1,0 +1,34 @@
+export function Logo({ size = 32, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <rect width="40" height="40" rx="10" fill="#0052FF" />
+      <path
+        d="M15 9h5.5c2.5 0 4.5 2 4.5 4.5 0 1.5-.7 2.8-1.8 3.6C24.8 18 26 19.7 26 21.5c0 3-2.5 5.5-5.5 5.5H15V9z"
+        fill="white"
+      />
+      <path
+        d="M18 12v4.5h2.5c1.2 0 2.2-1 2.2-2.2s-1-2.3-2.2-2.3H18z"
+        fill="#0052FF"
+      />
+      <path
+        d="M18 19.5V24h2.5c1.5 0 2.8-1.2 2.8-2.8 0-1-.8-1.7-1.5-1.7H18z"
+        fill="#0052FF"
+      />
+      <circle cx="31" cy="9" r="5" fill="#00D395" />
+      <path
+        d="M29 9l1.5 1.5L33 7.5"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

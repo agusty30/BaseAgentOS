@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import * as walletService from '../services/wallet.service.js';
+import { NETWORKS, type NetworkId } from '@baseagent/shared';
 
 const createWalletSchema = z.object({
   name: z.string().min(1).max(100),
@@ -54,6 +55,40 @@ export async function walletRoutes(app: FastifyInstance) {
   app.get('/:id/balance', async (request) => {
     const { id } = request.params as { id: string };
     return walletService.getWalletBalance(id, request.user.id);
+  });
+
+  app.get('/:id/transactions', async (request) => {
+    const { id } = request.params as { id: string };
+    const wallet = await walletService.getWalletById(id, request.user.id);
+    if (!wallet) {
+      throw new Error('Wallet not found');
+    }
+    const network = (wallet.network || 'base-sepolia') as NetworkId;
+    const config = NETWORKS[network];
+    const explorerApi = network === 'base-mainnet'
+      ? 'https://api.basescan.org/api'
+      : 'https://api-sepolia.basescan.org/api';
+
+    try {
+      const res = await fetch(
+        `${explorerApi}?module=account&action=txlist&address=${wallet.address}&startblock=0&endblock=99999999&page=1&offset=25&sort=desc`
+      );
+      const data = await res.json();
+      const txs = (data.result || []).map((tx: any) => ({
+        hash: tx.hash,
+        from: tx.from,
+        to: tx.to,
+        value: tx.value,
+        gasUsed: tx.gasUsed,
+        timeStamp: tx.timeStamp,
+        isError: tx.isError === '1',
+        functionName: tx.functionName || '',
+        explorerUrl: `${config.explorerUrl}/tx/${tx.hash}`,
+      }));
+      return { transactions: txs, network, explorerUrl: config.explorerUrl };
+    } catch {
+      return { transactions: [], network, explorerUrl: config.explorerUrl };
+    }
   });
 
   app.patch('/:id', async (request) => {

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app.store';
+import { Logo } from '@/components/Logo';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '◈' },
@@ -27,7 +28,7 @@ export function Sidebar() {
       sidebarOpen ? 'w-64' : 'w-16',
     )}>
       <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-4 dark:border-slate-700">
-        <img src="/logo.svg" alt="BaseAgent OS" width={32} height={32} className="rounded-lg shrink-0" />
+        <Logo size={32} className="shrink-0" />
         {sidebarOpen && (
           <span className="font-semibold text-slate-900 dark:text-white">BaseAgent OS</span>
         )}

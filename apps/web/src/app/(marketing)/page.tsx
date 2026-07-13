@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
@@ -185,7 +186,7 @@ export default function MarketingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
-            <img src="/logo.svg" alt="BaseAgent OS" width={32} height={32} className="rounded-lg" />
+            <Logo size={32} />
             <span className="text-lg font-semibold tracking-tight text-white">
               BaseAgent OS
             </span>
@@ -418,7 +419,7 @@ export default function MarketingPage() {
       <footer className="border-t border-white/[0.08] py-10 px-6">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.svg" alt="BaseAgent OS" width={32} height={32} className="rounded-lg" />
+            <Logo size={32} />
             <div>
               <span className="text-sm font-semibold text-white">
                 BaseAgent OS
