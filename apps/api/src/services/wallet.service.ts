@@ -241,6 +241,51 @@ export async function getWalletBalance(
   };
 }
 
+export async function transferETH(
+  fromWalletId: string,
+  userId: string,
+  toAddress: string,
+  amount: string,
+): Promise<{ txHash: string; explorerUrl: string }> {
+  const wallet = await getWalletById(fromWalletId, userId);
+  if (!wallet) throw new Error('Wallet not found');
+  if (!wallet.encryptedPrivateKey) throw new Error('Wallet has no private key');
+
+  const network = wallet.network as NetworkId;
+  const signer = getSigner(wallet);
+  const tx = await signer.sendTransaction({
+    to: toAddress,
+    value: ethers.parseEther(amount),
+  });
+  const receipt = await tx.wait();
+  return {
+    txHash: receipt!.hash,
+    explorerUrl: `${NETWORKS[network].explorerUrl}/tx/${receipt!.hash}`,
+  };
+}
+
+export async function transferUSDC(
+  fromWalletId: string,
+  userId: string,
+  toAddress: string,
+  amount: string,
+): Promise<{ txHash: string; explorerUrl: string }> {
+  const wallet = await getWalletById(fromWalletId, userId);
+  if (!wallet) throw new Error('Wallet not found');
+  if (!wallet.encryptedPrivateKey) throw new Error('Wallet has no private key');
+
+  const network = wallet.network as NetworkId;
+  const networkConfig = NETWORKS[network];
+  const signer = getSigner(wallet);
+  const usdcContract = new ethers.Contract(networkConfig.usdc, ERC20_ABI, signer);
+  const tx = await usdcContract.transfer(toAddress, ethers.parseUnits(amount, USDC_DECIMALS));
+  const receipt = await tx.wait();
+  return {
+    txHash: receipt!.hash,
+    explorerUrl: `${NETWORKS[network].explorerUrl}/tx/${receipt!.hash}`,
+  };
+}
+
 export function getDecryptedPrivateKey(
   wallet: typeof wallets.$inferSelect,
 ): string {

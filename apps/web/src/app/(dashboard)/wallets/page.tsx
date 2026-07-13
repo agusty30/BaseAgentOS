@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   RefreshCw,
+  Send,
 } from 'lucide-react';
 import {
   Card,
@@ -64,7 +65,7 @@ const fadeInUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } },
 };
 
-function WalletCardItem({ wallet, onSelect }: { wallet: any; onSelect: (w: any) => void }) {
+function WalletCardItem({ wallet, onSelect, onTransfer }: { wallet: any; onSelect: (w: any) => void; onTransfer: (w: any) => void }) {
   const [copied, setCopied] = useState(false);
   const [balance, setBalance] = useState<{ eth: string; usdc: string } | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
@@ -159,15 +160,23 @@ function WalletCardItem({ wallet, onSelect }: { wallet: any; onSelect: (w: any) 
           <span className="text-xs text-slate-400 dark:text-slate-500">
             Created {new Date(wallet.createdAt).toLocaleDateString()}
           </span>
-          <a
-            href={`${explorerBase}/address/${wallet.address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs text-brand hover:underline"
-          >
-            Explorer <ExternalLink className="h-3 w-3" />
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onTransfer(wallet); }}
+              className="flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
+            >
+              <Send className="h-3 w-3" /> Send
+            </button>
+            <a
+              href={`${explorerBase}/address/${wallet.address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 text-xs text-brand hover:underline"
+            >
+              Explorer <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </div>
       </CardFooter>
     </Card>
@@ -385,6 +394,133 @@ function ImportWalletDialog({ open, onClose, onCreated }: { open: boolean; onClo
   );
 }
 
+function TransferDialog({ open, onClose, fromWallet, allWallets, onDone }: { open: boolean; onClose: () => void; fromWallet: any; allWallets: any[]; onDone: () => void }) {
+  const [toType, setToType] = useState<'wallet' | 'address'>('wallet');
+  const [toWalletId, setToWalletId] = useState('');
+  const [toAddress, setToAddress] = useState('');
+  const [amount, setAmount] = useState('');
+  const [token, setToken] = useState<'ETH' | 'USDC'>('ETH');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ txHash: string; explorerUrl: string } | null>(null);
+
+  const otherWallets = allWallets.filter(w => w.id !== fromWallet?.id);
+
+  if (!open || !fromWallet) return null;
+
+  async function handleTransfer() {
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const destAddress = toType === 'wallet'
+        ? otherWallets.find(w => w.id === toWalletId)?.address
+        : toAddress;
+      if (!destAddress) {
+        setError('Please select a destination');
+        setLoading(false);
+        return;
+      }
+      const res = await api.transferFromWallet(fromWallet.id, {
+        toAddress: destAddress,
+        amount,
+        token,
+      });
+      setResult(res);
+      onDone();
+    } catch (err: any) {
+      setError(err.message || 'Transfer failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative z-10 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-950">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-1">Transfer Funds</h2>
+        <p className="text-xs text-slate-500 mb-4">From: {fromWallet.name} ({fromWallet.address?.slice(0, 6)}...{fromWallet.address?.slice(-4)})</p>
+
+        {result ? (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-4 text-center">
+              <p className="text-sm font-medium text-green-700 dark:text-green-400">Transfer Successful!</p>
+              <a href={result.explorerUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                View on Explorer <ExternalLink className="h-3 w-3" />
+              </a>
+              <p className="mt-1 text-[10px] text-slate-400 font-mono break-all">{result.txHash}</p>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={onClose}>Done</Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {error && <p className="text-sm text-red-500 mb-3 rounded-lg bg-red-50 dark:bg-red-900/20 p-2">{error}</p>}
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Send to</label>
+                <div className="mt-1 flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-1">
+                  <button onClick={() => setToType('wallet')} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${toType === 'wallet' ? 'bg-white shadow-sm dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'}`}>My Wallet</button>
+                  <button onClick={() => setToType('address')} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${toType === 'address' ? 'bg-white shadow-sm dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500'}`}>External Address</button>
+                </div>
+              </div>
+
+              {toType === 'wallet' ? (
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Destination Wallet</label>
+                  {otherWallets.length === 0 ? (
+                    <p className="mt-1 text-xs text-slate-400">No other wallets available. Create another wallet first.</p>
+                  ) : (
+                    <select value={toWalletId} onChange={(e) => setToWalletId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                      <option value="">Select wallet...</option>
+                      {otherWallets.map((w: any) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name} {w.isTreasury ? '(Treasury)' : w.isAgent ? '(Agent)' : ''} — {w.address?.slice(0, 6)}...{w.address?.slice(-4)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Recipient Address</label>
+                  <input type="text" value={toAddress} onChange={(e) => setToAddress(e.target.value)} placeholder="0x..." className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-mono dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Token</label>
+                  <select value={token} onChange={(e) => setToken(e.target.value as 'ETH' | 'USDC')} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    <option value="ETH">ETH</option>
+                    <option value="USDC">USDC</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Amount</label>
+                  <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" step="any" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button
+                variant="primary"
+                disabled={!amount || loading || (toType === 'wallet' ? !toWalletId : !toAddress)}
+                onClick={handleTransfer}
+              >
+                {loading ? 'Sending...' : `Send ${token}`}
+              </Button>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 export default function WalletsPage() {
   const { accessToken } = useAuthStore();
   const [wallets, setWallets] = useState<any[]>([]);
@@ -392,6 +528,7 @@ export default function WalletsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<any>(null);
+  const [transferWallet, setTransferWallet] = useState<any>(null);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -473,7 +610,7 @@ export default function WalletsPage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {wallets.map((wallet) => (
               <motion.div key={wallet.id} variants={fadeInUp}>
-                <WalletCardItem wallet={wallet} onSelect={setSelectedWallet} />
+                <WalletCardItem wallet={wallet} onSelect={setSelectedWallet} onTransfer={setTransferWallet} />
               </motion.div>
             ))}
           </div>
@@ -486,6 +623,7 @@ export default function WalletsPage() {
 
       <CreateWalletDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={loadWallets} />
       <ImportWalletDialog open={importOpen} onClose={() => setImportOpen(false)} onCreated={loadWallets} />
+      <TransferDialog open={!!transferWallet} onClose={() => setTransferWallet(null)} fromWallet={transferWallet} allWallets={wallets} onDone={loadWallets} />
     </>
   );
 }

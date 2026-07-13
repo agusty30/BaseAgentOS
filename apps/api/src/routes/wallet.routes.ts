@@ -91,6 +91,20 @@ export async function walletRoutes(app: FastifyInstance) {
     }
   });
 
+  app.post('/:id/transfer', async (request) => {
+    const { id } = request.params as { id: string };
+    const body = z.object({
+      toAddress: z.string().min(42).max(42),
+      amount: z.string().min(1),
+      token: z.enum(['ETH', 'USDC']),
+    }).parse(request.body);
+
+    if (body.token === 'ETH') {
+      return walletService.transferETH(id, request.user.id, body.toAddress, body.amount);
+    }
+    return walletService.transferUSDC(id, request.user.id, body.toAddress, body.amount);
+  });
+
   app.patch('/:id', async (request) => {
     const { id } = request.params as { id: string };
     const body = z.object({ name: z.string().min(1).max(100) }).parse(request.body);

@@ -60,6 +60,9 @@ class ApiClient {
   getWalletTransactions(id: string) {
     return this.request<{ transactions: any[]; network: string; explorerUrl: string }>('GET', `/api/wallets/${id}/transactions`);
   }
+  transferFromWallet(id: string, data: { toAddress: string; amount: string; token: 'ETH' | 'USDC' }) {
+    return this.request<{ txHash: string; explorerUrl: string }>('POST', `/api/wallets/${id}/transfer`, data);
+  }
   renameWallet(id: string, name: string) { return this.request('PATCH', `/api/wallets/${id}`, { name }); }
   setDefaultWallet(id: string) { return this.request('POST', `/api/wallets/${id}/set-default`); }
   deleteWallet(id: string) { return this.request('DELETE', `/api/wallets/${id}`); }
