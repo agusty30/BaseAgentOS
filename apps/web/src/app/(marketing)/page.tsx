@@ -430,7 +430,7 @@ export default function MarketingPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">Powered by</span>
-              <img src="/base-logo.svg" alt="BASE" width={20} height={20} />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="12" fill="#0052FF"/><path d="M12 5.4c-3.64 0-6.6 2.96-6.6 6.6s2.96 6.6 6.6 6.6c3.22 0 5.89-2.3 6.49-5.34h-3.36c-.53 1.42-1.88 2.43-3.46 2.43-2.04 0-3.7-1.66-3.7-3.69s1.66-3.69 3.7-3.69c1.58 0 2.93 1.01 3.46 2.43h3.36C17.89 7.7 15.22 5.4 12 5.4z" fill="white"/></svg>
               <span className="text-xs font-semibold text-white">BASE</span>
             </div>
             <span className="text-slate-700">|</span>

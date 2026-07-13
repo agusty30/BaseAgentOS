@@ -167,15 +167,12 @@ function WalletCardItem({ wallet, onSelect, onTransfer }: { wallet: any; onSelec
             >
               <Send className="h-3 w-3" /> Send
             </button>
-            <a
-              href={`${explorerBase}/address/${wallet.address}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-xs text-brand hover:underline"
+            <button
+              onClick={(e) => { e.stopPropagation(); onSelect(wallet); }}
+              className="flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors"
             >
-              Explorer <ExternalLink className="h-3 w-3" />
-            </a>
+              <ExternalLink className="h-3 w-3" /> History
+            </button>
           </div>
         </div>
       </CardFooter>

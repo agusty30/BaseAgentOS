@@ -7,7 +7,7 @@ const createStrategySchema = z.object({
   walletId: z.string().uuid(),
   name: z.string().min(1).max(200),
   type: z.enum(['dca', 'recurring-buy', 'recurring-sell', 'rebalance', 'profit-target', 'stop-loss']),
-  config: z.record(z.unknown()),
+  config: z.record(z.unknown()).default({}),
   autonomousExecution: z.boolean().default(false),
   maxDailySpend: z.string().default('1000'),
   maxPositionSize: z.string().default('5000'),

@@ -157,16 +157,28 @@ export default function TradingPage() {
     setAgentRunning(true);
     setError('');
     try {
+      const typeMap: Record<string, string> = {
+        dca: 'dca',
+        grid: 'recurring-buy',
+        momentum: 'recurring-buy',
+        rebalance: 'rebalance',
+      };
       await api.createStrategy({
         name: `Auto ${agentStrategy.toUpperCase()} ${agentToken}`,
-        type: agentStrategy,
-        tokenIn: 'USDC',
-        tokenOut: agentToken,
-        amountPerTrade: agentAmount,
-        interval: agentInterval,
+        type: typeMap[agentStrategy] || 'dca',
         walletId: selectedWallet,
         network,
-        provider: 'best',
+        config: {
+          tokenIn: 'USDC',
+          tokenOut: agentToken,
+          amountPerTrade: agentAmount,
+          interval: agentInterval,
+          provider: 'best',
+          strategy: agentStrategy,
+        },
+        autonomousExecution: true,
+        maxDailySpend: (parseFloat(agentAmount) * 10).toString(),
+        maxPositionSize: (parseFloat(agentAmount) * 50).toString(),
       });
       loadStrategies();
     } catch (err: any) {
@@ -249,7 +261,7 @@ export default function TradingPage() {
       {mode === 'manual' ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left Column - Provider + Swap */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-1 space-y-4 min-w-0">
             <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
               <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">DEX Provider</h3>
               <div className="space-y-2">
