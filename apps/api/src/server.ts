@@ -5,6 +5,9 @@ import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { ZodError } from 'zod';
 import 'dotenv/config';
 
 import { authRoutes } from './routes/auth.routes.js';
@@ -17,6 +20,7 @@ import { portfolioRoutes } from './routes/portfolio.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { settingsRoutes } from './routes/settings.routes.js';
+import { pool } from './db/index.js';
 
 const app = Fastify({
   logger: {
@@ -28,6 +32,30 @@ const app = Fastify({
 });
 
 async function bootstrap() {
+  // Run DB migrations on startup
+  try {
+    const migrationDb = drizzle(pool);
+    await migrate(migrationDb, { migrationsFolder: './drizzle' });
+    console.log('Database migrations applied successfully');
+  } catch (err) {
+    console.error('Migration failed (may already be applied):', (err as Error).message);
+  }
+
+  // Global error handler
+  app.setErrorHandler((error: any, _request, reply) => {
+    if (error instanceof ZodError) {
+      return reply.status(400).send({
+        error: 'Validation error',
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`),
+      });
+    }
+    app.log.error(error);
+    const statusCode = error?.statusCode ?? 500;
+    return reply.status(statusCode).send({
+      error: error?.message || 'Internal Server Error',
+    });
+  });
+
   await app.register(cors, {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true,

@@ -259,9 +259,9 @@ export default function TradingPage() {
       </div>
 
       {mode === 'manual' ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Left Column - Provider + Swap */}
-          <div className="lg:col-span-1 space-y-4 min-w-0">
+          <div className="space-y-4 min-w-0">
             <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
               <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">DEX Provider</h3>
               <div className="space-y-2">
@@ -308,8 +308,8 @@ export default function TradingPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">You Pay</label>
                   <div className="flex gap-2">
-                    <input type="number" value={amount} onChange={(e) => { setAmount(e.target.value); setQuote(null); }} placeholder="0.00" className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
-                    <select value={tokenIn} onChange={(e) => { setTokenIn(e.target.value); setQuote(null); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                    <input type="number" value={amount} onChange={(e) => { setAmount(e.target.value); setQuote(null); }} placeholder="0.00" className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
+                    <select value={tokenIn} onChange={(e) => { setTokenIn(e.target.value); setQuote(null); }} className="w-24 shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-sm font-medium dark:border-slate-600 dark:bg-slate-700 dark:text-white">
                       {tokenKeys.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
@@ -327,8 +327,8 @@ export default function TradingPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">You Receive</label>
                   <div className="flex gap-2">
-                    <input type="text" readOnly value={bestQuote?.amountOut || '—'} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-700/50 dark:text-white" />
-                    <select value={tokenOut} onChange={(e) => { setTokenOut(e.target.value); setQuote(null); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium dark:border-slate-600 dark:bg-slate-700 dark:text-white">
+                    <input type="text" readOnly value={bestQuote?.amountOut || '—'} className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-700/50 dark:text-white" />
+                    <select value={tokenOut} onChange={(e) => { setTokenOut(e.target.value); setQuote(null); }} className="w-24 shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-sm font-medium dark:border-slate-600 dark:bg-slate-700 dark:text-white">
                       {tokenKeys.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
@@ -383,7 +383,7 @@ export default function TradingPage() {
           </div>
 
           {/* Right Column - Trade History */}
-          <div className="lg:col-span-2">
+          <div>
             <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Trade History</h2>

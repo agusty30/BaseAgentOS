@@ -33,6 +33,12 @@ export async function walletRoutes(app: FastifyInstance) {
     if (body.isTreasury) {
       wallet = await walletService.setTreasuryWallet(wallet.id, request.user.id);
     }
+    // Auto-set as default if it's the user's first wallet
+    const allWallets = await walletService.getUserWallets(request.user.id);
+    const hasDefault = allWallets.some(w => w.isDefault);
+    if (!hasDefault) {
+      wallet = await walletService.setDefaultWallet(wallet.id, request.user.id);
+    }
     return wallet;
   });
 

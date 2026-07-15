@@ -129,7 +129,6 @@ function WalletCardItem({ wallet, onSelect, onTransfer, onRenamed, refreshKey }:
         'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700',
         wallet.isTreasury && 'border-blue-200 dark:border-blue-900/50',
       )}
-      onClick={() => onSelect(wallet)}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
@@ -452,6 +451,21 @@ function TransferDialog({ open, onClose, fromWallet, allWallets, onDone }: { ope
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ txHash: string; explorerUrl: string } | null>(null);
 
+  // Reset all state whenever a different wallet is selected for transfer
+  const walletId = fromWallet?.id;
+  useEffect(() => {
+    if (open) {
+      setToType('wallet');
+      setToWalletId('');
+      setToAddress('');
+      setAmount('');
+      setToken('ETH');
+      setError('');
+      setResult(null);
+      setLoading(false);
+    }
+  }, [walletId, open]);
+
   const otherWallets = allWallets.filter(w => w.id !== fromWallet?.id);
 
   if (!open || !fromWallet) return null;
@@ -595,6 +609,16 @@ export default function WalletsPage() {
     }
   }
 
+  function handleOpenTransfer(w: any) {
+    setSelectedWallet(null);
+    setTransferWallet(w);
+  }
+
+  function handleOpenHistory(w: any) {
+    setTransferWallet(null);
+    setSelectedWallet(w);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -659,7 +683,7 @@ export default function WalletsPage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {wallets.map((wallet) => (
               <motion.div key={wallet.id} variants={fadeInUp}>
-                <WalletCardItem wallet={wallet} onSelect={setSelectedWallet} onTransfer={setTransferWallet} onRenamed={loadWallets} refreshKey={refreshKey} />
+                <WalletCardItem wallet={wallet} onSelect={handleOpenHistory} onTransfer={handleOpenTransfer} onRenamed={loadWallets} refreshKey={refreshKey} />
               </motion.div>
             ))}
           </div>
